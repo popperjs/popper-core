@@ -111,3 +111,48 @@ test('multiple cleanups with differing controlAttribute', () => {
 
   expect(target.getAttribute('data-floating-ui-inert')).toBe(null);
 });
+
+test('avoid descending into contenteditable nodes', () => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(
+    `
+    <div>
+      <div id="other"></div>  
+      <div id="editor" contenteditable="true">
+        <div id="widget" contenteditable="false">
+          <div id="target"></div>
+          <div id="sibling"></div>
+        </div>
+        <p>Some text</p>
+      </div>
+    </div>
+  `,
+    'text/html',
+  );
+
+  document.body.appendChild(doc.body.firstElementChild!);
+
+  const target = document.getElementById('target')!;
+  const cleanup = markOthers([target]);
+
+  expect(target.getAttribute('data-floating-ui-inert')).toBe(null);
+
+  const other = document.getElementById('other')!;
+  expect(other.getAttribute('data-floating-ui-inert')).toBe('');
+
+  const sibling = document.getElementById('other')!;
+  expect(sibling.getAttribute('data-floating-ui-inert')).toBe('');
+
+  const editor = document.getElementById('editor')!;
+  expect(editor.getAttribute('data-floating-ui-inert')).toBe('');
+  expect(
+    editor.querySelector('p')!.getAttribute('data-floating-ui-inert'),
+  ).toBe(null);
+
+  cleanup();
+
+  expect(target.getAttribute('data-floating-ui-inert')).toBe(null);
+  expect(sibling.getAttribute('data-floating-ui-inert')).toBe(null);
+  expect(other.getAttribute('data-floating-ui-inert')).toBe(null);
+  expect(editor.getAttribute('data-floating-ui-inert')).toBe(null);
+});

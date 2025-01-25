@@ -1,7 +1,7 @@
 // Modified to add conditional `aria-hidden` support:
 // https://github.com/theKashey/aria-hidden/blob/9220c8f4a4fd35f63bee5510a9f41a37264382d4/src/index.ts
 import {getDocument} from '@floating-ui/react/utils';
-import {getNodeName} from '@floating-ui/utils/dom';
+import {getNodeName, isHTMLElement} from '@floating-ui/utils/dom';
 
 type Undo = () => void;
 
@@ -15,6 +15,16 @@ export const supportsInert = (): boolean =>
 
 const unwrapHost = (node: Element | ShadowRoot): Element | null =>
   node && ((node as ShadowRoot).host || unwrapHost(node.parentNode as Element));
+
+function isContentEditable(node: Node): boolean {
+  if (!isHTMLElement(node)) {
+    return false;
+  }
+
+  const attr = node.getAttribute('contenteditable');
+  // isContentEditable is not available in unit tests, so we need to check the attribute
+  return node.isContentEditable || attr === 'true' || attr === 'plaintext-only';
+}
 
 const correctElements = (parent: HTMLElement, targets: Element[]): Element[] =>
   targets
@@ -73,7 +83,7 @@ function applyAttributeToOthers(
     [].forEach.call(parent.children, (node: Element) => {
       if (getNodeName(node) === 'script') return;
 
-      if (elementsToKeep.has(node)) {
+      if (elementsToKeep.has(node) && !isContentEditable(node)) {
         deep(node);
       } else {
         const attr = controlAttribute
