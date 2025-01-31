@@ -21,21 +21,6 @@ function sortByDocumentPosition(a: Node, b: Node) {
   return 0;
 }
 
-function areMapsEqual(
-  map1: Map<Node, number | null>,
-  map2: Map<Node, number | null>,
-) {
-  if (map1.size !== map2.size) {
-    return false;
-  }
-  for (const [key, value] of map1.entries()) {
-    if (value !== map2.get(key)) {
-      return false;
-    }
-  }
-  return true;
-}
-
 export const FloatingListContext = React.createContext<{
   register: (node: Node) => void;
   unregister: (node: Node) => void;
@@ -70,32 +55,30 @@ interface FloatingListProps {
 export function FloatingList(props: FloatingListProps): React.JSX.Element {
   const {children, elementsRef, labelsRef} = props;
 
-  const [map, setMap] = React.useState(() => new Map<Node, number | null>());
+  const [nodes, setNodes] = React.useState(() => new Set<Node>());
 
   const register = React.useCallback((node: Node) => {
-    setMap((prevMap) => new Map(prevMap).set(node, null));
+    setNodes((prevMap) => new Set(prevMap).add(node));
   }, []);
 
   const unregister = React.useCallback((node: Node) => {
-    setMap((prevMap) => {
-      const map = new Map(prevMap);
+    setNodes((prevMap) => {
+      const map = new Set(prevMap);
       map.delete(node);
       return map;
     });
   }, []);
 
-  useModernLayoutEffect(() => {
-    const newMap = new Map(map);
-    const nodes = Array.from(newMap.keys()).sort(sortByDocumentPosition);
+  const map = React.useMemo(() => {
+    const newMap = new Map<Node, number>();
+    const sortedNodes = Array.from(nodes.keys()).sort(sortByDocumentPosition);
 
-    nodes.forEach((node, index) => {
+    sortedNodes.forEach((node, index) => {
       newMap.set(node, index);
     });
 
-    if (!areMapsEqual(map, newMap)) {
-      setMap(newMap);
-    }
-  }, [map]);
+    return newMap;
+  }, [nodes]);
 
   return (
     <FloatingListContext.Provider
